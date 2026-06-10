@@ -1,5 +1,24 @@
 # Home Lab
 
+## Table of Contents
+
+- [The Problem](#the-problem)
+- [Architecture Overview](#architecture-overview)
+- [Network Infrastructure](#network-infrastructure)
+- [VLAN Topology](#vlan-topology)
+- [Tailscale — The Security Backbone](#tailscalethe-security-backbone)
+  - [Where Tailscale is installed](#where-tailscale-is-installed)
+  - [Traffic routing](#traffic-routing)
+  - [MagicDNS](#magicdnshow-tailscale-names-nodes)
+  - [Public endpoints via Tailscale Serve](#public-endpoints-via-tailscale-serve)
+- [Services Reference](#services-reference)
+- [Setup Guide](#setup-guide)
+- [Validation](#validation)
+- [Reflection](#reflection)
+
+
+---
+
 This README documents my Home-Lab setup and why I chose each component. It's not meant to be a detailed how-to; I made it mostly for my own use, but it does show how anyone can implement a self-hosted infrastructure built around a **Zero Trust Network Access** model using [Tailscale](https://tailscale.com), [Docker](https://docker.com), [Proxmox](https://proxmox.com) and Nginx Proxy Manager [NPM](https://nginxproxymanager.com).
 
 ## The Problem
@@ -38,7 +57,7 @@ In this setup, Tailscale gives us:
 
 ---
 
-## Prerequisites
+### Prerequisites
 
 Before following the setup guide, you will need:
 
@@ -51,7 +70,7 @@ Before following the setup guide, you will need:
     - I use [UniFi](https://ui.com/) network gear (UCG + switches/APs)
 - Optional hosts (I use Raspberry Pis) for [Zabbix](https://www.zabbix.com/) (monitoring) and Home Assistant (IoT)
     - Separate RPis to be independent of Docker/Proxmox health
-- Basic familiarity with Linux, Docker Compose, ,Proxmox, and SSH
+- Basic familiarity with Linux, Docker Compose, Proxmox, and SSH
     - <small>All of the services/software used have free tiers/community editions  </small>
 ---
 ## Architecture Overview
@@ -60,51 +79,50 @@ The lab consists of two main servers, two Raspberry Pis, and a UniFi-managed int
 
 ```mermaid
 graph TD
-    subgraph Internet
-        CF[Cloudflare DNS<br/>*.domain.com]
-        PUB[Public Internet<br/>Users / Webhooks]
-    end
-    
-    subgraph Tailscale Network ["🔒 Tailscale Network (tailnet)"]
-        TS_DOCKER[Docker Server<br/>Tailscale IP]
-        TS_N8N[n8n LXC<br/>Tailscal MagicDNS]
-        TS_MDNS[ssh<br/>Tailscale MagicDNS]
-    end
-    subgraph LAN ["🏠 Local Network (LAN)"]
-        subgraph Proxmox ["Proxmox — LXC Containers"]
-            PG[Postgres Server]
-            N8N[n8n Workflows]
-            DUP[Duplicati + SFTP<br/>Backup Server]
-            QDRANT[Qdrant DB]
-            TESTING[Flowise · OpenClaw · …]
-        end
-        subgraph Docker Server ["Ubuntu — Docker Server + RAID Storage"]
-            NPM[Nginx Proxy Manager<br/>Reverse Proxy + SSL]
-            NEXTCLOUD[Nextcloud]
-            PORTAINER[Portainer]
-            PLEX[Plex]
-            subgraph RPis ["Raspberry Pis"]
-                ZABBIX[Zabbix<br/>Monitoring]
-                HA[Home Assistant]
-            end
-        end
-    end
+    subgraph Internet
+        CF[Cloudflare DNS<br/>*.domain.com]
+        PUB[Public Internet<br/>Users / Webhooks]
+    end
+    subgraph Network ["UniFi LAN"]
+        UCG[UCG Router]
+        SW[PoE Switches]
+        AP[U7 & U6-Mesh APs]
+    end
+    subgraph Tailscale Network ["🔒 Tailscale Network (tailnet)"]
+        TS_DOCKER[Docker Server<br/>Tailscale IP]
+        TS_N8N[n8n LXC<br/>Tailscale MagicDNS - Serve]
+        TS_MDNS[ssh-gtw LXC<br/>Tailscale MagicDNS - SSH]
+    end
 
-    CF -->|A record → Tailscale IP| TS_DOCKER
-    PUB -->|Tailscale Serve HTTPS| TS_N8N
-    TS_DOCKER --> NPM
-    NPM -->|docker-net hostname| NEXTCLOUD
-    NPM -->|docker-net hostname| PORTAINER
-    NPM -->|LAN IP + port| HA
-    NPM -->|LAN IP + port| ZABBIX
-    TS_MDNS --> Proxmox
+    subgraph LAN ["🏠 Local Network (LAN)"]
+        subgraph Proxmox ["Proxmox — LXC Containers"]
+            PG[Postgres Server]
+            N8N[n8n Workflows]
+            DUP[Duplicati + SFTP<br/>Backup Server]
+            QDRANT[Qdrant DB]
+            TESTING[Flowise · OpenClaw · …]
+        end
+        subgraph DockerSrv ["Ubuntu — Docker Server + RAID"]
+            NPM[Nginx Proxy Manager<br/>Reverse Proxy + SSL]
+            NEXTCLOUD[Nextcloud]
+            PORTAINER[Portainer]
+            PLEX[Plex]
+        end
+        subgraph RPis ["Raspberry Pis"]
+            ZABBIX[Zabbix<br/>Monitoring]
+            HA[Home Assistant]
+        end
+    end
 
-subgraph Network ["UniFi LAN"]
-        UCG[UCG Router]
-        SW[PoE Switches]
-        AP[UniFI U7 & U6-Mesh APs]
-end
-
+    CF -->|A record → Tailscale IP| TS_DOCKER
+    PUB -->|Tailscale Serve HTTPS| TS_N8N
+    TS_DOCKER --> NPM
+    NPM -->|docker-net hostname| NEXTCLOUD
+    NPM -->|docker-net hostname| PORTAINER
+    NPM -->|docker-net hostname| PLEX
+    NPM -->|LAN IP + port| HA
+    NPM -->|LAN IP + port| ZABBIX
+    TS_MDNS -->|SSH subnet routing| Proxmox
 ```
 
 ---
@@ -195,7 +213,7 @@ Tailscale setup is simple:
 
 >**Tailscale Subnet Routing:**<small> Tailscale allows you to define a node that acts as a router to one of your subnets. In this case I have it setup to access the rest of the LXCs; I could install Tailscale directly in each LXC, and for "production" LXC thats the preferred way, but I play a lot with new LXCs and this allows me to access them immediately without installing a client.
 
-Services that do **not*** need Tailscale (Organizr, Organizr) have no Tailscale node—they are only reachable through Nginx Proxy Manager, which itself sits behind the Docker Server's Tailscale IP.
+Services that do **not*** need Tailscale (e.g., Organizr, Homebridge) have no Tailscale node—they are only reachable through Nginx Proxy Manager, which itself sits behind the Docker Server's Tailscale IP.
 
 > \* <small>The reverse proxy is not strictly necessary here; you could install Tailscale in each host and reach it via its MagicDNS name, but I wanted to use my own domain name, and where I don't need ssh or specific ports besides 80/443 access, I'm not currently including them in the Tailscale network.</small>
 
@@ -255,6 +273,8 @@ flowchart LR
 Tailscale handles TLS termination. The n8n LXC only ever listens on `localhost:5678` — it is never directly exposed, even within the tailnet.
 
 
+---
+
 ## Services Reference
 
 ### Docker Server (Ubuntu + RAID)
@@ -272,7 +292,7 @@ The Docker host also serves as the **media and file server** via attached RAID s
 
 >NPM Example Configs: NPM Redirects any `*.domain.com` if it finds a corresponding host in its DB and points it to either an internal IP `10.0.x.x:port` or a Docker `host:port` 
 
-![alt text](NPM-1.png)
+> 📷 *Screenshot: `NPM-1.png` — add a screenshot of your NPM proxy host list here.*
 
 ### Proxmox (LXC Containers—Debian 12)
 
@@ -293,7 +313,7 @@ The Docker host also serves as the **media and file server** via attached RAID s
 
 ---
 
-## DNS & SSL
+### DNS & SSL
 
 For the Tailscale Network `YOUR-TAILNET.ts.net`
 - DNS is managed by Tailscale MagicDNS
@@ -310,7 +330,7 @@ For the `domain.com`
 
 ---
 
-## Backup Strategy
+### Backup Strategy
 
 - **Duplicati** runs scheduled backups from servers and hosts data volumes to 2 backup targets:
     - Remote target: BackBlaze S3 Buckets. 
@@ -319,13 +339,18 @@ For the `domain.com`
 
 ---
 
-## Monitoring & Observability
+### Monitoring & Observability
 
 **Zabbix** (Raspberry Pi) monitors the full stack—servers, LXCs, and network devices. Dashboards are accessible via Nginx Proxy Manager like all other web services.
 
 ---
 
-## Scripts
+
+## Setup Guide
+
+A bootstrap sequence for reproducing this lab from scratch. Each phase assumes the previous is complete.
+
+### Scripts
 
 Ready-to-use compose files and setup helpers are in the [`scripts/`](./scripts/) folder.
 
@@ -336,12 +361,6 @@ Ready-to-use compose files and setup helpers are in the [`scripts/`](./scripts/)
 | [`validate.sh`](./scripts/validate.sh) | Runs all connectivity checks—Tailscale status, MagicDNS ping, SSH reachability, server endpoint, domain chain, DNS. |
 
 See [`scripts/README.md`](./scripts/README.md) for the full network architecture and quickstart.
-
----
-
-## Setup Guide
-
-A bootstrap sequence for reproducing this lab from scratch. Each phase assumes the previous is complete.
 
 ### Phase 1 — Network (UniFi)
 
@@ -365,9 +384,9 @@ A bootstrap sequence for reproducing this lab from scratch. Each phase assumes t
 1. Install Ubuntu Server, attach and configure RAID
 2. Install Docker + Docker Compose
 3. Install Tailscale on the **host**:
-```
-bash curl -fsSL https://tailscale.com/install.sh | sh`
-sudo tailscale up`
+```bash
+curl -fsSL https://tailscale.com/install.sh | sh
+sudo tailscale up
 ```
 4. Note the assigned Tailscale IP—this is the address Cloudflare will point to
 5. Deploy containers (Portainer first, then manage the rest via Portainer):
@@ -525,27 +544,37 @@ My initial setup of Tailscale was a basic one, and although at the time it was w
 
 ---
 
-## AI Disclosure
+### AI Disclosure
 
 This documentation was produced with AI assistance (Claude, via Anthropic's Cowork tool).
 
 **What AI was used for:**
 - Validating my initial README against gaps vs. exercise instructions
-- Creating Mermaid diagrams
+- Creating Mermaid diagrams for the architecture and traffic flow
 - Writing Docker Compose files based on the actual `NPM.yaml` config I provided
-- Drafting the setup and validation phases/commands
-- Points for the "vs. traditional approaches" comparison table
+- Drafting the setup guide phases and validation commands
+- Structuring the "vs. traditional approaches" comparison table
+
+**What I reviewed and changed myself:**
+- All architecture decisions and Tailscale configuration reflect my actual running setup
+- Updated service lists, node names (ssh-gtw), and backup strategy (added BackBlaze target)
+- Filled in all reflection content from personal experience
+- Corrected Tailscale Serve command syntax and removed outdated flags
+- Rewrote the problem framing and prerequisites sections with my own context and personal anecdotes
+- Verified every validation command against my live environment
 
 **Where AI was helpful:**
-- The comparison table framing was a good starting point, though I verified each row against my own experience
-- Removing/replacing all private info (domain names, Tailscale network name, Public IPs)
+- Identifying gaps between what I had written and what the exercise required
+- The comparison table was a solid starting point — I verified each row against my own experience
+- Keeping private details (domain, Tailscale network name, public IPs, internal IPs) out of the public doc
 
 **Where AI was wrong or incomplete:**
-- The Docker Compose draft used different network setup, corrected once I provided the real `NPM.yaml`
-- Some Tailscale commands for setup/validation used an outdated syntax
+- Initial Docker Compose draft used different network names (`proxy`/`internal`) — corrected once I provided the real `NPM.yaml`
+- Some Tailscale commands used outdated syntax and needed correction
+- First diagram draft had Raspberry Pis incorrectly nested inside the Docker Server subgraph
 
 ---
 
-## Private Details
+### Private Details
 
-Sensitive values (IPs, actual hostnames, Tailscale node addresses, credentials) are documented in [`private.md`](./private.md), which is excluded from this repository via `.gitignore`.
+Sensitive values (IPs, actual hostnames, Tailscale node addresses, credentials) are documented in `private.md`, which is excluded from this repository via `.gitignore`.
