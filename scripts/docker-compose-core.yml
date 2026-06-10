@@ -24,7 +24,8 @@
 # ENVIRONMENT VARIABLES
 # ---------------------
 # Copy .env.example to .env and fill in your values before running.
-# Required vars: PUID, PGID, TZ, USERDIR
+# Required vars: PUID, PGID, TZ, USERDIR, TS_AUTHKEY
+# Optional vars: TS_HOSTNAME (defaults to "docker-host")
 #
 # USAGE
 # -----
@@ -55,6 +56,38 @@ volumes:
   portainer_data:
 
 services:
+
+  # ---------------------------------------------------------------------------
+  # Tailscale
+  # Connects this Docker host to your Tailscale mesh network.
+  # Runs with host networking so all services on this host are reachable
+  # at the node's Tailscale IP — no extra routing rules needed.
+  #
+  # State is persisted to disk so the node does not re-authenticate on restart.
+  # Use a reusable, ephemeral auth key tagged for servers.
+  #   https://login.tailscale.com/admin/settings/keys
+  #
+  # Required env vars (add to .env):
+  #   TS_AUTHKEY   — one-time auth key from the Tailscale admin console
+  #   TS_HOSTNAME  — node name shown in the Tailscale admin console
+  #                  (defaults to "docker-host" if unset)
+  # ---------------------------------------------------------------------------
+  tailscale:
+    image: tailscale/tailscale:latest
+    container_name: tailscale
+    restart: unless-stopped
+    hostname: ${TS_HOSTNAME:-docker-host}
+    environment:
+      - TS_AUTHKEY=${TS_AUTHKEY}
+      - TS_STATE_DIR=/var/lib/tailscale
+      - TS_USERSPACE=false
+    volumes:
+      - ${USERDIR}/docker/tailscale:/var/lib/tailscale
+      - /dev/net/tun:/dev/net/tun
+    cap_add:
+      - NET_ADMIN
+      - SYS_MODULE
+    network_mode: host
 
   # ---------------------------------------------------------------------------
   # Nginx Proxy Manager

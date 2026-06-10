@@ -6,8 +6,9 @@ Compose files and helpers for standing up the home-lab Docker stack.
 
 | File | Purpose |
 |---|---|
-| `docker-compose-core.yml` | Creates `media-net` + `db-net` networks, runs NPM and Portainer. **Run this first.** |
-| `docker-compose-example-service.yml` | Template for attaching any new service to the shared networks. |
+| `docker-compose-core.yml` | Creates `media-net` + `db-net` networks, runs NPM, Portainer, and Tailscale client. **Run this first.** |
+| `docker-compose-example-service.yml` | Template for attaching any new service to the proxy network. Includes a commented-out Tailscale sidecar option. |
+| `New-LXC-script.sh` | Debian 12 LXC bootstrap: creates a sudo user, sets zsh as the default shell, installs base packages, and installs + enables Tailscale. Run as root on a fresh container. |
 | `.env.example` | Required environment variables. Copy to `.env` and fill in before running. |
 
 > `.env` is excluded from git via `.gitignore` — it may contain sensitive paths.

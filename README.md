@@ -31,10 +31,10 @@ The dilemma then is to either expose your network to the public internet and acc
 
 ### Why not a traditional VPN, bastion, or port-forwarding?
 - **Port forwarding** punches holes directly in your firewall—every exposed port is a target, with no authentication layer in front of your service. 
-    * <small> *My own experience here is that 5 minutes after I forwarded port 80 for a web server, I was already getting probes from an insane amount of IPs, and I'm not exaggerating, 5 minutes!*</small>
+    ><div style="font-size:12px; line-height:1.3; color:darkorange;">My own experience here is that 5 minutes after I forwarded port 80 for a web server, I was already getting probes from an insane amount of IPs, and I'm not exaggerating, 5 minutes!</span>
 - **Self-hosted VPN (WireGuard, OpenVPN)** works, but follows a hub-and-spoke model: all traffic routes through your VPN server, which itself needs an open inbound port and ongoing key management. If the VPN server goes down, everything goes with it.
 - **Bastion-Jump host & reverse proxy** reduces surface area but adds complexity; still requires an open SSH port for Jump and SSL and HTTP opened ports for Reverse Proxy.
-   - <small> I have tried both (Bastillion & Guacamole as jump hosts) and NginxProxyManager for reverse proxy. It still created an attack surface on my servers, and hardening them took a lot of effort. In the end I did keep the reverse proxy, as you will see, but behind a Tailscale Network</small>
+    > <div style="font-size:12px; line-height:1.3;">I have tried both (Bastillion & Guacamole as jump hosts) and NginxProxyManager for reverse proxy. It still created an attack surface on my servers, and hardening them took a lot of effort. In the end I did keep the reverse proxy, as you will see, but behind a Tailscale Network</div>
 
 **Tailscale** solves all three problems. It creates an encrypted peer-to-peer overlay network (built on WireGuard) where every node authenticates via identity—not IP or firewall rules. No inbound ports are opened on the router. Access is granted per-node with least privilege. And features like MagicDNS and Tailscale Serve handle the naming and public-endpoint problems that would otherwise require additional infrastructure.
 
@@ -71,7 +71,7 @@ Before following the setup guide, you will need:
 - Optional hosts (I use Raspberry Pis) for [Zabbix](https://www.zabbix.com/) (monitoring) and Home Assistant (IoT)
     - Separate RPis to be independent of Docker/Proxmox health
 - Basic familiarity with Linux, Docker Compose, Proxmox, and SSH
-    - <small>All of the services/software used have free tiers/community editions  </small>
+    - <div style="font-size:12px; line-height:1.3;">All of the services/software used have free tiers/community editions  </div>
 ---
 ## Architecture Overview
 
@@ -148,9 +148,9 @@ Three networks segmented at the UniFi layer. Servers and trusted devices live on
 
 | VLAN ID | Name | Subnet | WiFi SSID | Auth |
 |---|---|---|---|---|
-| 1 | Default | `10.0.5.0/24` | M5 (5 GHz + 6 GHz) | WPA2/WPA3 |
-| 10 | IoT Network | `10.0.10.0/24` | MIoT (2.4 GHz) | WPA2 |
-| 40 | Guest Network | `10.0.40.0/24` | MGuest (2.4 GHz) | Open |
+| 1 | Default | `10.0.5.0/24` | Main (5 GHz + 6 GHz) | WPA2/WPA3 |
+| 10 | IoT Network | `10.0.10.0/24` | IoT (2.4 GHz) | WPA2 |
+| 40 | Guest Network | `10.0.40.0/24` | Guest (2.4 GHz) | Open |
 
 ```mermaid
 graph TB
@@ -163,7 +163,7 @@ graph TB
         DOCKER[Ubuntu Docker Server]
         PROXMOX[Proxmox Host]
         PI_Z[Pi — Zabbix/HA]
-        WIFI_M5["WiFi<sup>7</sup> (5 GHz / 6 GHz)"]
+        WIFI_Main["Main WiFi<sup>7</sup> (5/6 GHz)"]
     end
 
     subgraph V10["VLAN 10 — IoT (10.0.10.0/24)"]
@@ -181,7 +181,7 @@ graph TB
     UCG --> V40
 ```
 
-> <small>**Note on IoT ↔ Default routing:** Home Assistant (VLAN 1) needs to reach IoT devices (VLAN 10). This is handled via firewall rules on the UCG Max allowing HA's IP to initiate connections to VLAN 10, while blocking the reverse.</small>
+> <div style="font-size:12px; line-height:1.3;"><b>Note on IoT ↔ Default routing:</b> Home Assistant (VLAN 1) needs to reach IoT devices (VLAN 10). This is handled via firewall rules on the UCG Max allowing HA's IP to initiate connections to VLAN 10, while blocking the reverse.</div>
 
 ---
 
@@ -191,31 +191,34 @@ Tailscale implements a **Zero Trust Network Access** model: every node must auth
 
 Tailscale setup is simple:
 - You go to tailscale.com and create your account
-    - <small>To setup you will use one of your identity providers (Google, Apple, Microsoft, GitHub), which allows for MFA and passkey.</small>
+    - <div style="font-size:12px; line-height:1.3;">To setup you will use one of your identity providers (Google, Apple, Microsoft, GitHub), which allows for MFA and passkey.</div>
 - From there you will be guided on how to download the client for your devices (Linux, MacOS, iOS, Windows, Android), and when you install on that device, you log in with the same identity provider. **That's it!**
 - Your device is now on the network and has its own Tailscale IP and MagicDNS name.
-    - <small>Install the client on your laptop or smartphone, and you have immediate and secure access to your device from the internet, no exposing a port in your router, no firewall rule to configure; it just works.</small>
+    - <div style="font-size:12px; line-height:1.3;">Install the client on your laptop or smartphone, and you have immediate and secure access to your device from the internet, no exposing a port in your router, no firewall rule to configure; it just works.</div>
 - The [admin console](https://login.tailscale.com/admin) allows you to manage all your devices.
 
->💡<small>**Tailscale** has many other features that allow you to control specific access inside your private network (Grants), Define a client as an exit node (So you can route your internet activity through a trusted node in your network) or create a subnet (to allow access to a subnet or specific devices where you can't install the client like printers), I will give examples of this in the specific nodes I use it</small>
+><div style="font-size:12px; line-height:1.3;">💡<b>Tailscale</b> has many other features that allow you to control specific access inside your private network (Grants), Define a client as an exit node (So you can route your internet activity through a trusted node in your network) or create a subnet (to allow access to a subnet or specific devices where you can't install the client like printers), I will give examples of this in the specific nodes I use it</div>
 
 
 
 ### Where Tailscale is installed.
 
-| Node / Server | Why |
-|---|---|
-| Docker Server (host) | Receives all `*.domain.com` web traffic via Cloudflare DNS pointing to its Tailscale IP, and NPM Reverse Proxy redirects it internally. |
-| n8n LXC | Needs a public HTTPS URL for webhooks and MCP server endpoints (via Tailscale Serve) |
-|ssh-gtw LXC| Acting as a subnet router that allows for SSH and HTTP/S access to the rest (details below)
-| Postgres LXC |  To be able to access Postgres port 5432 |
-| Client Devices| Laptops, Smartphones and Desktop - all have Tailscale Installed|
+Tailscale is baked into both deployment paths — it is included in the Docker VM compose stack and in the LXC bootstrap script, so every new node joins the tailnet automatically.
 
->**Tailscale Subnet Routing:**<small> Tailscale allows you to define a node that acts as a router to one of your subnets. In this case I have it setup to access the rest of the LXCs; I could install Tailscale directly in each LXC, and for "production" LXC thats the preferred way, but I play a lot with new LXCs and this allows me to access them immediately without installing a client.
+| Node / Server | How Tailscale is deployed | Why |
+|---|---|---|
+| Docker Server (host) | [`docker-compose-core.yml`](./scripts/docker-compose-core.yml) — `tailscale` container, host network mode | Receives all `*.domain.com` web traffic via Cloudflare DNS pointing to its Tailscale IP; NPM reverse-proxies internally |
+| Any new Debian 12 LXC | [`New-LXC-script.sh`](./scripts/New-LXC-script.sh) — installs and enables `tailscaled` at bootstrap | Every LXC joins the tailnet on first boot; run `tailscale up` to authenticate |
+| n8n LXC | Script + manual `tailscale serve` | Needs a public HTTPS URL for webhooks and MCP server endpoints (via Tailscale Serve) |
+| ssh-gtw LXC | Script | Acts as a subnet router for SSH and HTTP/S access to the rest of the LXC cluster |
+| Postgres LXC | Script | Direct access to port 5432 over the tailnet |
+| Client Devices | Native Tailscale app | Laptops, smartphones, and desktops — all on the tailnet |
+
+><div style="font-size:12px; line-height:1.3;"><b>Tailscale Subnet Routing: </b> Tailscale allows you to define a node that acts as a router to one of your subnets. In this case I have it setup to access the rest of the LXCs directly with their LAN IPs (10.0.5.xxx); I could install Tailscale directly in each LXC, and for "production" LXC thats the preferred way, but I play a lot with new LXCs and this allows me to access them immediately without installing a client. Tailscale also has <b>Access Controls</b> where you define ACL (or *Grants*) to limit who has access and to what (ex IP:Port) and thats how I limit to access only the IP pool I assigned to the LXC in Proxmox</div>
 
 Services that do **not*** need Tailscale (e.g., Organizr, Homebridge) have no Tailscale node—they are only reachable through Nginx Proxy Manager, which itself sits behind the Docker Server's Tailscale IP.
 
-> \* <small>The reverse proxy is not strictly necessary here; you could install Tailscale in each host and reach it via its MagicDNS name, but I wanted to use my own domain name, and where I don't need ssh or specific ports besides 80/443 access, I'm not currently including them in the Tailscale network.</small>
+><div style="font-size:12px; line-height:1.3;">The reverse proxy is not strictly necessary here; you could install Tailscale in each host and reach it via its MagicDNS name, but I wanted to use my own domain name, and where I don't need ssh or specific ports besides 80/443 access, I'm not currently including them in the Tailscale network.</div>
 
 ### Traffic routing
 
@@ -240,9 +243,7 @@ sequenceDiagram
 
 Every node on the tailnet automatically gets a stable DNS name managed by Tailscale:
 
-```
-<node-name>.YOUR-TAILNET.ts.net
-```
+`node-name>.YOUR-TAILNET.ts.net`
 
 No manual DNS configuration is required—Tailscale's control plane provisions and maintains these records. On any device in the tailnet, you can reach `hostname.YOUR-TAILNET.ts.net` directly, without knowing an IP address. It also manages a search domain so you can reference any node just by its host name `ssh hostname`. The MagicDNS URL is used for SSH access, inter-service calls, and as the foundation for Tailscale Serve.
 
@@ -292,7 +293,7 @@ The Docker host also serves as the **media and file server** via attached RAID s
 
 >NPM Example Configs: NPM Redirects any `*.domain.com` if it finds a corresponding host in its DB and points it to either an internal IP `10.0.x.x:port` or a Docker `host:port` 
 
-> 📷 *Screenshot: `NPM-1.png` — add a screenshot of your NPM proxy host list here.*
+![NPM-Screenshot](./NPM-1.png)
 
 ### Proxmox (LXC Containers—Debian 12)
 
@@ -330,34 +331,30 @@ For the `domain.com`
 
 ---
 
-### Backup Strategy
-
+### Other Details on this setup
+**Backups**
 - **Duplicati** runs scheduled backups from servers and hosts data volumes to 2 backup targets:
-    - Remote target: BackBlaze S3 Buckets. 
-    - Local target: SFTP server (LXC), writing to SD-Drive for portable storage)
-- Backup access gated behind Tailscale SSH
+    - Remote target: BackBlaze S3 Buckets. 
+    - Local target: SFTP server (LXC), writing to SD-Drive for portable storage)
+**Monitoring & Observability**
 
----
-
-### Monitoring & Observability
-
-**Zabbix** (Raspberry Pi) monitors the full stack—servers, LXCs, and network devices. Dashboards are accessible via Nginx Proxy Manager like all other web services.
+- **Zabbix** (Raspberry Pi) monitors the full stack—servers, LXCs, and network devices
+    - Dashboards are accessible via Nginx Proxy Manager like all other web services.
 
 ---
 
 
 ## Setup Guide
-
 A bootstrap sequence for reproducing this lab from scratch. Each phase assumes the previous is complete.
 
 ### Scripts
-
 Ready-to-use compose files and setup helpers are in the [`scripts/`](./scripts/) folder.
 
 | Script | Purpose |
 |---|---|
-| [`docker-compose-core.yml`](./scripts/docker-compose-core.yml) | Nginx Proxy Manager + Portainer. Run first—creates shared Docker networks. |
-| [`docker-compose-example-service.yml`](./scripts/docker-compose-example-service.yml) | Template for attaching any service to the proxy network. |
+| [`docker-compose-core.yml`](./scripts/docker-compose-core.yml) | Nginx Proxy Manager + Portainer + Tailscale client. Run first—creates shared Docker networks. |
+| [`docker-compose-example-service.yml`](./scripts/docker-compose-example-service.yml) | Template for attaching any service to the proxy network. Includes a commented-out Tailscale sidecar option for per-service Tailscale exposure. |
+| [`New-LXC-script.sh`](./scripts/New-LXC-script.sh) | Debian 12 LXC bootstrap: creates a sudo user, sets zsh as the default shell, installs base packages, and installs + enables Tailscale. Run as root on a fresh container. |
 | [`validate.sh`](./scripts/validate.sh) | Runs all connectivity checks—Tailscale status, MagicDNS ping, SSH reachability, server endpoint, domain chain, DNS. |
 
 See [`scripts/README.md`](./scripts/README.md) for the full network architecture and quickstart.
@@ -384,15 +381,15 @@ See [`scripts/README.md`](./scripts/README.md) for the full network architecture
 1. Install Ubuntu Server, attach and configure RAID
 2. Install Docker + Docker Compose
 3. Install Tailscale on the **host**:
-```bash
-curl -fsSL https://tailscale.com/install.sh | sh
-sudo tailscale up
-```
-4. Note the assigned Tailscale IP—this is the address Cloudflare will point to
-5. Deploy containers (Portainer first, then manage the rest via Portainer):
-- Nginx Proxy Manager
-- Organizr 
-- Nextcloud
+`curl -fsSL https://tailscale.com/install.sh | sh`
+`sudo tailscale up`
+4. Run the [docker-compose-core](./scripts/docker-compose-core.yml)
+`docker compose -f docker-compose-core.yml up -d`
+5. Note the assigned Tailscale IP—this is the address Cloudflare will point to
+6. Deploy containers (Portainer first, then manage the rest via Portainer):
+    - Nginx Proxy Manager
+    - Organizr 
+    - Nextcloud
 
 ### Phase 4 — Proxmox & LXC Containers
 
@@ -423,10 +420,12 @@ This makes `https://n8n.YOUR-TAILNET.ts.net` reachable from the internet with au
 ### Phase 6 — DNS & Reverse Proxy
 
 1. In **Cloudflare**, create:
-```
-A       domain.com    →  <Tailscale IP of Docker Server>
-CNAME   *.domain.com  →  domain.com
-```
+
+|record|points to:|
+|--|--|
+|A|domain.com|<Tailscale IP of Docker Server>|
+|CNAME|*.domain.com|domain.com|
+
 Set both records to **DNS only** (grey cloud—not proxied), so traffic goes directly to the Tailscale IP
 2. In **Nginx Proxy Manager**, create proxy hosts for each service:
    - Match on the public hostname (e.g., `ha.domain.com`)
@@ -434,15 +433,10 @@ Set both records to **DNS only** (grey cloud—not proxied), so traffic goes dir
    - Enable **SSL** and request a Let's Encrypt certificate for `*.domain.com` wildcard
 3. Verify end-to-end: `https://service.domain.com` → Cloudflare → Tailscale → NPM → service
 
-### Phase 7 — Backups (Duplicati)
-
-1. On the backup LXC, start the SFTP server and mount the SD-Drive
-2. In Duplicati (can run as a Docker container in the LXC and PCs), configure backup jobs pointing to the BackBlaze and SFTP destination
-3. Schedule jobs and verify restore works before relying on it
 ---
 ## Validation
 
-The [`scripts/validate.sh`](./scripts/validate.sh) script runs all checks below automatically. To run it:
+The [`scripts/validate.sh`](./scripts/validate.sh) script trys to run all checks below automatically. To run it:
 
 ```bash
 chmod +x scripts/validate.sh
@@ -528,24 +522,25 @@ nmap -Pn <WAN-IP> -p 22,80,443,8080
 ### What worked well
 The Home Lab has gone through several iterations and configurations since inception, each time with improvements on what was initially implemented. Docker was my initial VM server and that made it fairly easy to start deploying both back-end and front-end of services.
 
-My initial network was very limited in terms of VLAN and firewall management, but once I moved to UniFi network the level of control and details I have are very good.
+My initial network was very limited in terms of VLAN and firewall management, but once I moved to UniFi network the level of control and observability I have are very good.
 
-Tailscale was what made it all possible once I started exposing services and accessing servers remotely, it was a painless setup that just worked right away and was secure.
+Tailscale was what made it all possible once I started exposing services and accessing servers remotely, it was a painless setup that just worked right away compared to the other options I tried and was secure day 1.
 
-Proxmox was a second addition to the setup, but it has proven to be a very good option (and less demanding in resources than Docker VM's). For certain services like Postgres performance is better with less resource consumption than Docker
+Proxmox was a second addition to the setup, but it has proven to be a very good option to test new services and less demanding in resources than Docker VM's. For certain services like Postgres, performance is better with less resource consumption than Docker
 
 ### What was difficult or surprising
-The "uncomfortable" experience of having hundreds of probes in less than 5 minutes when I tried port forwarding on the router was what drove me to seek an alternative, and how I found Tailscale and was amazed by the ease of use and no-cost option to deploy for personal use.
+The "uncomfortable" experience of having hundreds of probes in less than 5 minutes when I tried port forwarding on the router was what drove me to seek an alternative, and how I found Tailscale after several frustrating weeks of trying to setup other solutions, I was honestly taken aback by the ease of deployment and use and the generous no-cost option for personal use.
 
-Trying to setup a reverse proxy to initially mitigate the attack surface (before tailscale) was difficult and was not really the best solution. 
+Trying to setup a reverse proxy to initially mitigate the attack surface (before tailscale) was difficult, specially since I started with Caddy which is good but not as easy, I later moved to NPM which made it much more easy and I kept after I moved to the Tailscale solution since it still provided me with the use of my own domain. 
 
 ### What I would do differently with more time
-My initial setup of Tailscale was a basic one, and although at the time it was what I needed to deploy fast and without a fuss, I wish I had spent a little more time understanding all the options I had with it and designing my network flows better. There are things that may not be needed or could be simplified, and others that I could implement to work better (local UniFi DNS alignment, Tailscale ssh directly, more restricted ACL)
+My initial setup of Tailscale was a basic one, and although at the time it was what I needed to deploy fast and without a fuss, I wish I had spent a little more time understanding all the options I had with it and designing my network flows better. There are things that may not be needed or could be simplified, and others that I could implement to work better (local UniFi DNS alignment, Tailscale Auth Keys for my scripts, adding ssh direct for hosts, more restricted ACLs)
+
+The good news is that all of this can be implemented without major disruption to my existing architecture and can be done case by case.
 
 ---
 
 ### AI Disclosure
-
 This documentation was produced with AI assistance (Claude, via Anthropic's Cowork tool).
 
 **What AI was used for:**

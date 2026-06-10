@@ -63,4 +63,61 @@ services:
       db-net:
         ipv4_address: 172.20.0.51  # only on db-net — never reachable via NPM
 
+  # ---------------------------------------------------------------------------
+  # [OPTIONAL] myservice-db
+  # (shown above — db-net only, never reachable via NPM)
+  # ---------------------------------------------------------------------------
+
+  # ---------------------------------------------------------------------------
+  # [OPTIONAL] Tailscale sidecar
+  # Use this pattern when you want a service to be reachable directly on your
+  # Tailscale network (its own Tailscale IP) instead of — or in addition to —
+  # routing it through NPM.
+  #
+  # HOW IT WORKS
+  # ------------
+  # 1. tailscale-sidecar joins Tailscale and gets its own Tailscale IP.
+  # 2. myservice sets `network_mode: "service:tailscale-sidecar"`, which means
+  #    it shares the sidecar's network namespace (same IP stack, same ports).
+  # 3. Any device on your Tailnet can reach myservice at:
+  #      http://<tailscale-ip-of-sidecar>:8080
+  #
+  # TRADE-OFFS
+  # ----------
+  # - myservice must remove its `networks` and `expose` blocks when using this
+  #   mode (those are replaced by the sidecar's network namespace).
+  # - The sidecar needs its own auth key and will appear as a separate node in
+  #   the Tailscale admin console. Use a tagged, reusable ephemeral key.
+  # - If you want both NPM proxying AND Tailscale access, keep myservice on
+  #   media-net/db-net and run Tailscale in docker-compose-core.yml instead
+  #   (host-network mode covers all services automatically).
+  #
+  # Required env vars (add to .env):
+  #   TS_AUTHKEY          — auth key for this node
+  #   TS_HOSTNAME_SVC     — node name in Tailscale admin (e.g. "myservice")
+  # ---------------------------------------------------------------------------
+  # tailscale-sidecar:
+  #   image: tailscale/tailscale:latest
+  #   container_name: tailscale-myservice
+  #   restart: unless-stopped
+  #   hostname: ${TS_HOSTNAME_SVC:-myservice}
+  #   environment:
+  #     - TS_AUTHKEY=${TS_AUTHKEY}
+  #     - TS_STATE_DIR=/var/lib/tailscale
+  #     - TS_USERSPACE=false
+  #   volumes:
+  #     - ${USERDIR}/docker/tailscale-myservice:/var/lib/tailscale
+  #     - /dev/net/tun:/dev/net/tun
+  #   cap_add:
+  #     - NET_ADMIN
+  #     - SYS_MODULE
+  #   networks:
+  #     media-net:
+  #       ipv4_address: 172.21.0.50
+  #     db-net:
+  #       ipv4_address: 172.20.0.50
+  #
+  # To activate — replace the myservice `networks` / `expose` blocks with:
+  #   network_mode: "service:tailscale-sidecar"
+
 volumes: {}
