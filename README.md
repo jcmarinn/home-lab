@@ -1,7 +1,9 @@
 # Home Lab
+This GitHub documents my Home-Lab setup and its components. It's not meant to be a detailed how-to; I made it mostly for my own use, but it does show how anyone can implement a self-hosted infrastructure built around a **Zero Trust Network Access** model using [Tailscale](https://tailscale.com), [Docker](https://docker.com), [Proxmox](https://proxmox.com) and Nginx Proxy Manager [NPM](https://nginxproxymanager.com).
+
+---
 
 ## Table of Contents
-
 - [The Problem](#the-problem)
 - [Architecture Overview](#architecture-overview)
 - [Network Infrastructure](#network-infrastructure)
@@ -18,8 +20,6 @@
 
 
 ---
-
-This README documents my Home-Lab setup and why I chose each component. It's not meant to be a detailed how-to; I made it mostly for my own use, but it does show how anyone can implement a self-hosted infrastructure built around a **Zero Trust Network Access** model using [Tailscale](https://tailscale.com), [Docker](https://docker.com), [Proxmox](https://proxmox.com) and Nginx Proxy Manager [NPM](https://nginxproxymanager.com).
 
 ## The Problem
 
