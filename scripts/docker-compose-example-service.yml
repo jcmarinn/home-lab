@@ -1,0 +1,66 @@
+# =============================================================================
+# Example — Attaching a service to the shared networks
+# =============================================================================
+#
+# To be fronted by Nginx Proxy Manager a service must:
+#   1. Join `media-net` (declared external — created by docker-compose-core.yml)
+#   2. NOT publish its port to the host (use `expose` instead)
+#   3. Optionally use a static IP for stable proxy rules
+#   4. Be added as a proxy host in the NPM admin UI
+#
+# If the service needs a database or internal backend, also join `db-net`.
+# Containers on `db-net` only are never reachable through the reverse proxy.
+#
+# NPM proxy host settings for this example:
+#   Domain:          myservice.yourdomain.com
+#   Forward host:    myservice   (or 172.21.0.x if using a static IP)
+#   Forward port:    8080
+#   SSL:             Request a Let's Encrypt certificate
+# =============================================================================
+
+networks:
+  media-net:
+    name: media-net
+    external: true    # created by docker-compose-core.yml
+
+  db-net:
+    name: db-net
+    external: true    # created by docker-compose-core.yml
+
+services:
+
+  myservice:
+    image: example/myservice:latest
+    container_name: myservice
+    restart: unless-stopped
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+      - DB_HOST=myservice-db
+      - DB_PORT=5432
+    volumes:
+      - ${USERDIR}/docker/myservice:/config
+    expose:
+      - "8080"
+    networks:
+      media-net:
+        ipv4_address: 172.21.0.50   # optional — omit for dynamic IP
+      db-net:
+        ipv4_address: 172.20.0.50
+
+  myservice-db:
+    image: postgres:16
+    container_name: myservice-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: myservice
+      POSTGRES_USER: myservice
+      POSTGRES_PASSWORD: changeme
+    volumes:
+      - ${USERDIR}/docker/myservice-db:/var/lib/postgresql/data
+    networks:
+      db-net:
+        ipv4_address: 172.20.0.51  # only on db-net — never reachable via NPM
+
+volumes: {}

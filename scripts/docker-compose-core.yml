@@ -1,0 +1,105 @@
+# =============================================================================
+# Core Infrastructure — Nginx Proxy Manager + Portainer
+# =============================================================================
+#
+# DOCKER NETWORK DESIGN
+# ---------------------
+# Two named bridge networks with defined subnets. Static IPs are assigned to
+# key infrastructure containers so proxy rules stay stable even after restarts.
+#
+#   media-net  (172.21.0.0/16)
+#              Services related to media and general web frontends.
+#              NPM sits here and routes to any container on this network
+#              by container name or static IP.
+#
+#   db-net     (172.20.0.0/16)
+#              Backend connectivity — databases, internal APIs, services
+#              that should not be directly reachable via the reverse proxy.
+#              NPM is also on this network so it can proxy to internal services
+#              that only expose a backend port (e.g. Postgres admin UIs).
+#
+# Both networks are created here. All other compose files reference them
+# with `external: true` so they attach to the same networks.
+#
+# ENVIRONMENT VARIABLES
+# ---------------------
+# Copy .env.example to .env and fill in your values before running.
+# Required vars: PUID, PGID, TZ, USERDIR
+#
+# USAGE
+# -----
+#   cp .env.example .env   # fill in your values
+#   docker compose -f docker-compose-core.yml up -d
+#
+# On first run NPM generates a self-signed cert. Log in at:
+#   http://<docker-server-tailscale-ip>:81
+#   Default credentials: admin@example.com / changeme  ← change immediately
+# =============================================================================
+
+networks:
+  media-net:
+    name: media-net
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.21.0.0/16
+
+  db-net:
+    name: db-net
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+volumes:
+  portainer_data:
+
+services:
+
+  # ---------------------------------------------------------------------------
+  # Nginx Proxy Manager
+  # Reverse proxy + SSL termination for all *.yourdomain.com subdomains.
+  # Static IPs on both networks keep proxy rules stable across restarts.
+  #
+  # Admin UI (port 81) is reachable via the host IP. Restrict access to
+  # LAN / Tailscale only — do not expose port 81 to the public internet.
+  # ---------------------------------------------------------------------------
+  nginxproxmgr:
+    image: jc21/nginx-proxy-manager:latest
+    container_name: nginxproxmgr
+    restart: unless-stopped
+    ports:
+      - "80:80"      # HTTP  — redirects to HTTPS
+      - "81:81"      # Admin UI — LAN/Tailscale only
+      - "443:443"    # HTTPS — all proxied traffic
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    volumes:
+      - ${USERDIR}/docker/nginxproxmgr/data:/data
+      - ${USERDIR}/docker/nginxproxmgr/letsencrypt:/etc/letsencrypt
+      - ${USERDIR}/docker/shared:/shared
+    networks:
+      db-net:
+        ipv4_address: 172.20.0.15
+      media-net:
+        ipv4_address: 172.21.0.15
+
+  # ---------------------------------------------------------------------------
+  # Portainer CE
+  # Docker management UI. Served through NPM — port 9000 is not published.
+  # Access via proxy: portainer.yourdomain.com → http://portainer:9000
+  # ---------------------------------------------------------------------------
+  portainer:
+    image: portainer/portainer-ce:latest
+    container_name: portainer
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - portainer_data:/data
+    expose:
+      - "9000"
+    networks:
+      media-net:
+        ipv4_address: 172.21.0.10
