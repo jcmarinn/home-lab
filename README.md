@@ -36,7 +36,7 @@ The dilemma then is to either expose your network to the public internet and acc
 - **Bastion-Jump host & reverse proxy** reduces surface area but adds complexity; still requires an open SSH port for Jump and SSL and HTTP opened ports for Reverse Proxy.
     > <div style="font-size:12px; line-height:1.3;">I have tried both (Bastillion & Guacamole as jump hosts) and NginxProxyManager for reverse proxy. It still created an attack surface on my servers, and hardening them took a lot of effort. In the end I did keep the reverse proxy, as you will see, but behind a Tailscale Network</div>
 
-**Tailscale** solves all three problems. It creates an encrypted peer-to-peer overlay network (built on WireGuard) where every node authenticates via identity—not IP or firewall rules. No inbound ports are opened on the router. Access is granted per-node with least privilege. And features like MagicDNS and Tailscale Serve handle the naming and public-endpoint problems that would otherwise require additional infrastructure.
+**Tailscale** solves all three problems. It creates an encrypted peer-to-peer overlay network (built on WireGuard) where every node authenticates via identity—not IP or firewall rules. No inbound ports are opened on the router. Access is granted per-node with least privilege. And features like MagicDNS and Tailscale funnelhandle the naming and public-endpoint problems that would otherwise require additional infrastructure.
 
 | Approach | What it requires | What it leaves open |
 |---|---|---|
@@ -115,7 +115,7 @@ graph TD
     end
 
     CF -->|A record → Tailscale IP| TS_DOCKER
-    PUB -->|Tailscale Serve HTTPS| TS_N8N
+    PUB -->|Tailscale funnelHTTPS| TS_N8N
     TS_DOCKER --> NPM
     NPM -->|docker-net hostname| NEXTCLOUD
     NPM -->|docker-net hostname| PORTAINER
@@ -300,7 +300,7 @@ The Docker host also serves as the **media and file server** via attached RAID s
 
 | Container | Purpose | Access |
 |---|---|---|
-| **n8n** | Workflow automation, webhooks, MCP server | `n8n.domain.com` Tailscale Serve |
+| **n8n** | Workflow automation, webhooks, MCP server | `n8n.domain.com` Tailscale funnel|
 | **Postgres** | Shared database server for Docker apps and LXCs | LAN IP / Tailscale IP |
 | **ssh-gtw** | LXC serving as SFTP and ssh routing | Tailscale IP - ssh |
 | **Qdrant** | Vector database for RAG pipelines | LAN IP / Tailscale IP |
@@ -404,7 +404,7 @@ sudo tailscale up
 4. **n8n—enable Tailscale Serve:**
 ``` bash
 # Expose n8n's local port publicly via Tailscale HTTPS
-sudo tailscale serve --bg --https=443 http://localhost:5678
+sudo tailscale funnel--bg --https=443 http://localhost:5678
 ```
 This makes `https://n8n.YOUR-TAILNET.ts.net` reachable from the internet with auto-provisioned TLS.
 5. Deploy remaining LXC services: Postgres, Duplicati/SFTP, Qdrant
@@ -476,12 +476,12 @@ ssh user@postgres
 
 Successful connection proves MagicDNS resolution is working and Tailscale SSH routing is functional.
 
-### 4 — Tailscale Serve (n8n public endpoint)
+### 4 — Tailscale funnel(n8n public endpoint)
 
 Run on the n8n LXC to confirm the server is active:
 
 ```bash
-tailscale serve status
+tailscale funnelstatus
 ```
 
 Expected output shows port 443 forwarding to `http://localhost:5678`.
@@ -555,7 +555,7 @@ This documentation was produced with AI assistance (Claude, via Anthropic's Cowo
 - All architecture decisions and Tailscale configuration reflect my actual running setup
 - Updated service lists, node names (ssh-gtw), and backup strategy (added BackBlaze target)
 - Filled in all reflection content from personal experience
-- Corrected Tailscale Serve command syntax and removed outdated flags
+- Corrected Tailscale funnelcommand syntax and removed outdated flags
 - Rewrote the problem framing and prerequisites sections with my own context and personal anecdotes
 - Verified every validation command against my live environment
 
