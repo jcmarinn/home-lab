@@ -12,7 +12,7 @@ This GitHub documents my Home-Lab setup and its components. It's not meant to be
   - [Where Tailscale is installed](#where-tailscale-is-installed)
   - [Traffic routing](#traffic-routing)
   - [MagicDNS](#magicdnshow-tailscale-names-nodes)
-  - [Public endpoints via Tailscale Serve](#public-endpoints-via-tailscale-serve)
+  - [Public endpoints via Tailscale Funnel](#public-endpoints-via-tailscale-serve)
 - [Services Reference](#services-reference)
 - [Setup Guide](#setup-guide)
 - [Validation](#validation)
@@ -245,20 +245,20 @@ Every node on the tailnet automatically gets a stable DNS name managed by Tailsc
 
 `node-name>.YOUR-TAILNET.ts.net`
 
-No manual DNS configuration is required—Tailscale's control plane provisions and maintains these records. On any device in the tailnet, you can reach `hostname.YOUR-TAILNET.ts.net` directly, without knowing an IP address. It also manages a search domain so you can reference any node just by its host name `ssh hostname`. The MagicDNS URL is used for SSH access, inter-service calls, and as the foundation for Tailscale Serve.
+No manual DNS configuration is required—Tailscale's control plane provisions and maintains these records. On any device in the tailnet, you can reach `hostname.YOUR-TAILNET.ts.net` directly, without knowing an IP address. It also manages a search domain so you can reference any node just by its host name `ssh hostname`. The MagicDNS URL is used for SSH access, inter-service calls, and as the foundation for Tailscale Funnel.
 
-### Public endpoints via Tailscale Serve
+### Public endpoints via Tailscale Funnel
 
-For services that need to be reachable by external cloud platforms (e.g., n8n webhooks, MCP servers called by AI agents), **Tailscale Serve** exposes a local port on the node's MagicDNS name with auto-provisioned HTTPS—no reverse proxy, no certificate management, no port forwarding needed.
+For services that need to be reachable by external cloud platforms (e.g., n8n webhooks, MCP servers called by AI agents), **Tailscale Funnel** exposes a local port on the node's MagicDNS name with auto-provisioned HTTPS—no reverse proxy, no certificate management, no port forwarding needed.
 
 ```mermaid
 flowchart LR
     EXT[External Service<br/>Supabase · Composio · AI Agents]
-    TS_SERVE["Tailscale Serve\nHTTPS + auto TLS cert\nn8n.YOUR-TAILNET.ts.net"]
+    TS_FUNNEL["Tailscale Funnel\nHTTPS + auto TLS cert\n8n.YOUR-TAILNET.ts.net"]
     N8N[n8n LXC\nlocalhost:5678]
 
-    EXT -->|"HTTPS POST\nhttps://n8n.YOUR-TAILNET.ts.net/webhook/path"| TS_SERVE
-    TS_SERVE -->|"proxies to"| N8N
+    EXT -->|"HTTPS POST\nhttps://n8n.YOUR-TAILNET.ts.net/webhook/path"| TS_FUNNEL
+    TS_FUNNEL -->|"proxies to"| N8N
 ```
 
 **How the n8n webhook URL is constructed:**
@@ -273,6 +273,7 @@ flowchart LR
 
 Tailscale handles TLS termination. The n8n LXC only ever listens on `localhost:5678` — it is never directly exposed, even within the tailnet.
 
+><div style="font-size:12px; line-height:1.3;"> If you want to test the Funnel endpoints within your Tailscale ntwork before opening it to the WWW then use Serve instead of Funnel. It will create the same HTTPS endpoint with certificates but will only be accessible from other authorized nodes in your network.</div>
 
 ---
 
