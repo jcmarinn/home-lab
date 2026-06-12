@@ -273,7 +273,7 @@ flowchart LR
 
 Tailscale handles TLS termination. The n8n LXC only ever listens on `localhost:5678` — it is never directly exposed, even within the tailnet.
 
-><div style="font-size:12px; line-height:1.3;"> If you want to test the Funnel endpoints within your Tailscale ntwork before opening it to the WWW then use Serve instead of Funnel. It will create the same HTTPS endpoint with certificates but will only be accessible from other authorized nodes in your network.</div>
+><div style="font-size:12px; line-height:1.3;"> If you want to test the Funnel endpoints within your Tailscale network before opening it to the WWW then use Serve instead of Funnel. It will create the same HTTPS endpoint with certificates but will only be accessible from other authorized nodes in your network.</div>
 
 ---
 
@@ -481,7 +481,7 @@ Successful connection proves MagicDNS resolution is working and Tailscale SSH ro
 Run on the n8n LXC to confirm the server is active:
 
 ```bash
-tailscale funnelstatus
+tailscale funnel status
 ```
 
 Expected output shows port 443 forwarding to `http://localhost:5678`.
