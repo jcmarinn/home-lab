@@ -115,7 +115,7 @@ graph TD
     end
 
     CF -->|A record → Tailscale IP| TS_DOCKER
-    PUB -->|Tailscale funnelHTTPS| TS_N8N
+    PUB -->|Tailscale funnel HTTPS| TS_N8N
     TS_DOCKER --> NPM
     NPM -->|docker-net hostname| NEXTCLOUD
     NPM -->|docker-net hostname| PORTAINER
@@ -208,7 +208,7 @@ Tailscale is baked into both deployment paths — it is included in the Docker V
 | Node / Server | How Tailscale is deployed | Why |
 |---|---|---|
 | Docker Server (host) | [`docker-compose-core.yml`](./scripts/docker-compose-core.yml) — `tailscale` container, host network mode | Receives all `*.domain.com` web traffic via Cloudflare DNS pointing to its Tailscale IP; NPM reverse-proxies internally |
-| Any new Debian 12 LXC | [`New-LXC-script.sh`](./scripts/New-LXC-script.sh) — installs and enables `tailscaled` at bootstrap | Every LXC joins the tailnet on first boot; run `tailscale up` to authenticate |
+| Any new Debian 12 LXC | [`New-LXC-script.sh`](./scripts/New-LXC-script.sh) — installs and enables `tailscale` at bootstrap | Every LXC joins the tailnet on first boot; run `tailscale up` to authenticate |
 | n8n LXC | Script + manual `tailscale serve` | Needs a public HTTPS URL for webhooks and MCP server endpoints (via Tailscale Serve) |
 | ssh-gtw LXC | Script | Acts as a subnet router for SSH and HTTP/S access to the rest of the LXC cluster |
 | Postgres LXC | Script | Direct access to port 5432 over the tailnet |
@@ -555,7 +555,7 @@ This documentation was produced with AI assistance (Claude, via Anthropic's Cowo
 - All architecture decisions and Tailscale configuration reflect my actual running setup
 - Updated service lists, node names (ssh-gtw), and backup strategy (added BackBlaze target)
 - Filled in all reflection content from personal experience
-- Corrected Tailscale funnelcommand syntax and removed outdated flags
+- Corrected Tailscale funnel command syntax and removed outdated flags
 - Rewrote the problem framing and prerequisites sections with my own context and personal anecdotes
 - Verified every validation command against my live environment
 
