@@ -36,7 +36,7 @@ The dilemma then is to either expose your network to the public internet and acc
 - **Bastion-Jump host & reverse proxy** reduces surface area but adds complexity; still requires an open SSH port for Jump and SSL and HTTP opened ports for Reverse Proxy.
     > <div style="font-size:12px; line-height:1.3;">I have tried both (Bastillion & Guacamole as jump hosts) and NginxProxyManager for reverse proxy. It still created an attack surface on my servers, and hardening them took a lot of effort. In the end I did keep the reverse proxy, as you will see, but behind a Tailscale Network</div>
 
-**Tailscale** solves all three problems. It creates an encrypted peer-to-peer overlay network (built on WireGuard) where every node authenticates via identity—not IP or firewall rules. No inbound ports are opened on the router. Access is granted per-node with least privilege. And features like MagicDNS and Tailscale funnelhandle the naming and public-endpoint problems that would otherwise require additional infrastructure.
+**Tailscale** solves all three problems. It creates an encrypted peer-to-peer overlay network (built on WireGuard) where every node authenticates via identity—not IP or firewall rules. No inbound ports are opened on the router. Access is granted per-node with least privilege. And features like MagicDNS and Tailscale funnel handle the naming and public-endpoint problems that would otherwise require additional infrastructure.
 
 | Approach | What it requires | What it leaves open |
 |---|---|---|
@@ -52,7 +52,7 @@ In this setup, Tailscale gives us:
 - **Zero open ports** on the router—the UCG Max has no forwarding rules whatsoever
 - **Per-node, identity-based access** — a node is either on the tailnet or it isn't; no shared keys, no IP allow-lists
 - **MagicDNS** — stable hostnames without managing DNS records or knowing IPs
-- **Tailscale Serve** — selective HTTPS exposure for one service (n8n) without exposing anything else
+- **Tailscale funnel** — selective HTTPS exposure for one service (n8n) without exposing anything else
 - **SSH via tailnet** — direct encrypted SSH to any LXC that has Tailscale, with no jump host needed
 
 ---
