@@ -12,7 +12,7 @@ This GitHub documents my Home-Lab setup and its components. It's not meant to be
   - [Where Tailscale is installed](#where-tailscale-is-installed)
   - [Traffic routing](#traffic-routing)
   - [MagicDNS](#magicdnshow-tailscale-names-nodes)
-  - [Public endpoints via Tailscale Funnel](#public-endpoints-via-tailscale-serve)
+  - [Public endpoints via Tailscale Funnel](#public-endpoints-via-tailscale-funnel)
 - [Services Reference](#services-reference)
 - [Setup Guide](#setup-guide)
 - [Validation](#validation)
