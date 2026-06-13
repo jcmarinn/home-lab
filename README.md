@@ -537,7 +537,9 @@ Trying to setup a reverse proxy to initially mitigate the attack surface (before
 ### What I would do differently with more time
 My initial setup of Tailscale was a basic one, and although at the time it was what I needed to deploy fast and without a fuss, I wish I had spent a little more time understanding all the options I had with it and designing my network flows better. There are things that may not be needed or could be simplified, and others that I could implement to work better (local UniFi DNS alignment, Tailscale Auth Keys for my scripts, adding ssh direct for hosts, more restricted ACLs)
 
-The good news is that all of this can be implemented without major disruption to my existing architecture and can be done case by case.
+The Subnet route I have enabled is not a clean way to access the LXCs where I have not installed Tailscale directly, but it was a quick way to access any LXC in a specific range of IP. It also required me to establish specific routes in for when I'm local so connection goes through my local gateway instead of going through Tailscale.
+
+The good news is that all of this can be improved / implemented without major disruption to my existing architecture and can be done on a case by case.
 
 ---
 
