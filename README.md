@@ -1,5 +1,5 @@
 # Home Lab
-This GitHub documents my Home-Lab setup and its components. It's not meant to be a detailed how-to; I made it mostly for my own use, but it does show how anyone can implement a self-hosted infrastructure built around a **Zero Trust Network Access** model using [Tailscale](https://tailscale.com), [Docker](https://docker.com), [Proxmox](https://proxmox.com) and Nginx Proxy Manager [NPM](https://nginxproxymanager.com).
+This repository documents my Home-Lab setup and its components. It's not meant to be a detailed how-to; I made it mostly for my own use, but it does show how anyone can implement a self-hosted infrastructure built around a **Zero Trust Network Access** model using [Tailscale](https://tailscale.com), [Docker](https://docker.com), [Proxmox](https://proxmox.com) and Nginx Proxy Manager [NPM](https://nginxproxymanager.com).
 
 ---
 
@@ -13,6 +13,7 @@ This GitHub documents my Home-Lab setup and its components. It's not meant to be
   - [Traffic routing](#traffic-routing)
   - [MagicDNS](#magicdnshow-tailscale-names-nodes)
   - [Public endpoints via Tailscale Funnel](#public-endpoints-via-tailscale-funnel)
+- [Tailscale in the Enterprise](#tailscale-in-the-enterprise)
 - [Services Reference](#services-reference)
 - [Setup Guide](#setup-guide)
 - [Validation](#validation)
@@ -191,8 +192,8 @@ Tailscale implements a **Zero Trust Network Access** model: every node must auth
 
 Tailscale setup is simple:
 - You go to tailscale.com and create your account
-    - <div style="font-size:12px; line-height:1.3;">To setup you will use one of your identity providers (Google, Apple, Microsoft, GitHub), which allows for MFA and passkey.</div>
-- From there you will be guided on how to download the client for your devices (Linux, MacOS, iOS, Windows, Android), and when you install on that device, you log in with the same identity provider. **That's it!**
+    - <div style="font-size:12px; line-height:1.3;">To set up, you will use one of your identity providers (Google, Apple, Microsoft, GitHub), which allows for MFA and passkey.</div>
+- From there you will be guided on how to download the client for your devices (Linux, MacOS, iOS, Windows, Android), and when you install it on that device, you log in with the same identity provider. **That's it!**
 - Your device is now on the network and has its own Tailscale IP and MagicDNS name.
     - <div style="font-size:12px; line-height:1.3;">Install the client on your laptop or smartphone, and you have immediate and secure access to your device from the internet, no exposing a port in your router, no firewall rule to configure; it just works.</div>
 - The [admin console](https://login.tailscale.com/admin) allows you to manage all your devices.
@@ -216,7 +217,7 @@ Tailscale is baked into both deployment paths — it is included in the Docker V
 
 ><div style="font-size:12px; line-height:1.3;"><b>Tailscale Subnet Routing: </b> Tailscale allows you to define a node that acts as a router to one of your subnets. In this case I have it setup to access the rest of the LXCs directly with their LAN IPs (10.0.5.xxx); I could install Tailscale directly in each LXC, and for "production" LXC thats the preferred way, but I play a lot with new LXCs and this allows me to access them immediately without installing a client. Tailscale also has <b>Access Controls</b> where you define ACL (or *Grants*) to limit who has access and to what (ex IP:Port) and thats how I limit to access only the IP pool I assigned to the LXC in Proxmox</div>
 
-Services that do **not*** need Tailscale (e.g., Organizr, Homebridge) have no Tailscale node—they are only reachable through Nginx Proxy Manager, which itself sits behind the Docker Server's Tailscale IP.
+Services that do **not** need Tailscale (e.g., Organizr, Homebridge) have no Tailscale node—they are only reachable through Nginx Proxy Manager, which itself sits behind the Docker Server's Tailscale IP.
 
 ><div style="font-size:12px; line-height:1.3;">The reverse proxy is not strictly necessary here; you could install Tailscale in each host and reach it via its MagicDNS name, but I wanted to use my own domain name, and where I don't need ssh or specific ports besides 80/443 access, I'm not currently including them in the Tailscale network.</div>
 
@@ -243,7 +244,7 @@ sequenceDiagram
 
 Every node on the tailnet automatically gets a stable DNS name managed by Tailscale:
 
-`node-name>.YOUR-TAILNET.ts.net`
+`<node-name>.YOUR-TAILNET.ts.net`
 
 No manual DNS configuration is required—Tailscale's control plane provisions and maintains these records. On any device in the tailnet, you can reach `hostname.YOUR-TAILNET.ts.net` directly, without knowing an IP address. It also manages a search domain so you can reference any node just by its host name `ssh hostname`. The MagicDNS URL is used for SSH access, inter-service calls, and as the foundation for Tailscale Funnel.
 
@@ -274,7 +275,18 @@ flowchart LR
 Tailscale handles TLS termination. The n8n LXC only ever listens on `localhost:5678` — it is never directly exposed, even within the tailnet.
 
 ><div style="font-size:12px; line-height:1.3;"> If you want to test the Funnel endpoints within your Tailscale network before opening it to the WWW then use Serve instead of Funnel. It will create the same HTTPS endpoint with certificates but will only be accessible from other authorized nodes in your network.</div>
+---
+## Tailscale in the Enterprise
 
+Tailscale has built a strong following among home-lab enthusiasts and developers, but having spent years designing and selling enterprise telecommunications solutions, I've been thinking carefully about where it fits in the corporate space.
+
+After designing and implementing hundreds of network and security architectures — across vendors like Cisco, Fortinet, Palo Alto, and Zscaler — I can say with some confidence that Tailscale addresses real enterprise needs. Where incumbent solutions tend toward complexity, Tailscale is streamlined. Where traditional vendors require lengthy deployment cycles, Tailscale is fast to stand up. And where enterprise networking typically demands significant CapEx, Tailscale offers a consumption-based model with no upfront hardware investment.
+
+The broader shift driving this is well-documented: enterprise connectivity has moved away from hardware-centric architectures — MPLS, point-to-point circuits, perimeter firewalls — toward software-defined, internet-first models. The operative requirement today is secure access for any user, on any device, from anywhere, built on a Zero Trust framework. Tailscale is purpose-built for this paradigm, and it delivers on it with a notably low operational overhead.
+
+Two recent developments are worth watching for enterprise evaluators. The acquisition of Border0 moves Tailscale meaningfully closer to the privileged access management controls that enterprise security teams require. And the development of Aperture addresses a growing concern for CISOs: governing how AI and LLM tools are used across the organization without blocking productive use.
+
+If you want a ground-level read on Tailscale's enterprise potential, ask a developer or IT team member who has deployed it in their home-lab how the experience compares to your current corporate VPN or PAM solution. The contrast tends to be instructive.
 ---
 
 ## Services Reference
@@ -292,7 +304,7 @@ The Docker host also serves as the **media and file server** via attached RAID s
 | **Plex** | Media management and streaming | Via reverse proxy |
 | **Homebridge** | HomeKit bridge for non-native smart home devices | Via reverse proxy |
 
->NPM Example Configs: NPM Redirects any `*.domain.com` if it finds a corresponding host in its DB and points it to either an internal IP `10.0.x.x:port` or a Docker `host:port` 
+>NPM Example Configs: NPM redirects any `*.domain.com` if it finds a corresponding host in its DB and points it to either an internal IP `10.0.x.x:port` or a Docker `host:port` 
 
 ![NPM-Screenshot](./NPM-1.png)
 
@@ -404,7 +416,7 @@ sudo tailscale up
 4. **n8n—enable Tailscale Serve:**
 ``` bash
 # Expose n8n's local port publicly via Tailscale HTTPS
-sudo tailscale funnel--bg --https=443 http://localhost:5678
+sudo tailscale funnel --bg --https=443 http://localhost:5678
 ```
 This makes `https://n8n.YOUR-TAILNET.ts.net` reachable from the internet with auto-provisioned TLS.
 5. Deploy remaining LXC services: Postgres, Duplicati/SFTP, Qdrant
@@ -437,7 +449,7 @@ Set both records to **DNS only** (grey cloud—not proxied), so traffic goes dir
 ---
 ## Validation
 
-The [`scripts/validate.sh`](./scripts/validate.sh) script trys to run all checks below automatically. To run it:
+The [`scripts/validate.sh`](./scripts/validate.sh) script tries to run all checks below automatically. To run it:
 
 ```bash
 chmod +x scripts/validate.sh
@@ -476,7 +488,7 @@ ssh user@postgres
 
 Successful connection proves MagicDNS resolution is working and Tailscale SSH routing is functional.
 
-### 4 — Tailscale funnel(n8n public endpoint)
+### 4 — Tailscale funnel (n8n public endpoint)
 
 Run on the n8n LXC to confirm the server is active:
 
@@ -523,23 +535,23 @@ nmap -Pn <WAN-IP> -p 22,80,443,8080
 ### What worked well
 The Home Lab has gone through several iterations and configurations since inception, each time with improvements on what was initially implemented. Docker was my initial VM server and that made it fairly easy to start deploying both back-end and front-end of services.
 
-My initial network was very limited in terms of VLAN and firewall management, but once I moved to UniFi network the level of control and observability I have are very good.
+My initial network was very limited in terms of VLAN and firewall management, but once I moved to the UniFi network, the level of control and observability improved significantly.
 
-Tailscale was what made it all possible once I started exposing services and accessing servers remotely, it was a painless setup that just worked right away compared to the other options I tried and was secure day 1.
+Tailscale was what made it all possible once I started exposing services and accessing servers remotely. It was a painless setup that just worked right away—more secure from day one than anything else I had tried.
 
-Proxmox was a second addition to the setup, but it has proven to be a very good option to test new services and less demanding in resources than Docker VM's. For certain services like Postgres, performance is better with less resource consumption than Docker
+Proxmox was a second addition to the setup, but it has proven to be a very good option to test new services and less demanding in resources than Docker VMs. For certain services like Postgres, performance is better with less resource consumption than Docker VMs.
 
 ### What was difficult or surprising
-The "uncomfortable" experience of having hundreds of probes in less than 5 minutes when I tried port forwarding on the router was what drove me to seek an alternative, and how I found Tailscale after several frustrating weeks of trying to setup other solutions, I was honestly taken aback by the ease of deployment and use and the generous no-cost option for personal use.
+The "uncomfortable" experience of having hundreds of probes in less than 5 minutes when I tried port forwarding on the router was what drove me to seek an alternative, and how I found Tailscale after several frustrating weeks of trying to set up other solutions, I was honestly taken aback by the ease of deployment and use and the generous no-cost option for personal use.
 
-Trying to setup a reverse proxy to initially mitigate the attack surface (before tailscale) was difficult, specially since I started with Caddy which is good but not as easy, I later moved to NPM which made it much more easy and I kept after I moved to the Tailscale solution since it still provided me with the use of my own domain. 
+Trying to set up a reverse proxy to initially mitigate the attack surface (before tailscale) was difficult, especially since I started with Caddy which is good but not as easy, I later moved to NPM which made it much easier and I kept it after I moved to the Tailscale solution since it still provided me with the use of my own domain. 
 
 ### What I would do differently with more time
-My initial setup of Tailscale was a basic one, and although at the time it was what I needed to deploy fast and without a fuss, I wish I had spent a little more time understanding all the options I had with it and designing my network flows better. There are things that may not be needed or could be simplified, and others that I could implement to work better (local UniFi DNS alignment, Tailscale Auth Keys for my scripts, adding ssh direct for hosts, more restricted ACLs)
+My initial setup of Tailscale was a basic one, and although at the time it was what I needed to deploy fast and without a fuss. I wish I had spent a little more time understanding all the options I had with it and designing my network flows better. There are things that may not be needed or could be simplified, and others that I could implement to work better (local UniFi DNS alignment, Tailscale Auth Keys for my scripts, adding ssh direct for hosts, more restricted ACLs)
 
-The Subnet route I have enabled is not a clean way to access the LXCs where I have not installed Tailscale directly, but it was a quick way to access any LXC in a specific range of IP. It also required me to establish specific routes in for when I'm local so connection goes through my local gateway instead of going through Tailscale.
+The subnet route I have enabled is not a clean way to access the LXCs where I have not installed Tailscale directly, but it was a quick way to access any LXC in a specific range of IP. It also required me to establish specific routes for when I'm local so the connection goes through my local gateway instead of going through Tailscale.
 
-The good news is that all of this can be improved / implemented without major disruption to my existing architecture and can be done on a case by case.
+The good news is that all of this can be improved / implemented without major disruption to my existing architecture and can be done on a case-by-case basis.
 
 ---
 
