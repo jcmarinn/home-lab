@@ -11,6 +11,7 @@ This repository documents my Home-Lab setup and its components. It's not meant t
 - [Tailscale — The Security Backbone](#tailscalethe-security-backbone)
   - [Where Tailscale is installed](#where-tailscale-is-installed)
   - [Traffic routing](#traffic-routing)
+  - [Local DNS — Split-Horizon Resolution](#local-dnssplit-horizon-resolution)
   - [MagicDNS](#magicdnshow-tailscale-names-nodes)
   - [Public endpoints via Tailscale Funnel](#public-endpoints-via-tailscale-funnel)
 - [Tailscale in the Enterprise](#tailscale-in-the-enterprise)
@@ -239,6 +240,39 @@ sequenceDiagram
     NPM->>SVC: Proxies to internal docker-net name or LAN IP
     SVC-->>User: Response
 ```
+
+### Local DNS—Split-Horizon Resolution
+
+The path above (`Cloudflare → Tailscale → NPM`) is correct for any device off the LAN, but it's two unnecessary hops for a device that's already sitting on the same network as NPM: a public DNS lookup, then a round-trip through Tailscale to reach a box a few feet away. Since UniFi 9.3+ supports wildcard **Host (A)** records, the UCG Max can answer `*.domain.com` locally with NPM's LAN IP directly, so local clients skip both hops.
+
+```mermaid
+sequenceDiagram
+    actor User as User (on LAN)
+    participant UCG as UCG Router — Local DNS
+    participant NPM as Nginx Proxy Manager
+    participant SVC as Service
+
+    User->>UCG: https://service.domain.com
+    UCG-->>User: Resolves to NPM's LAN IP (no Cloudflare, no Tailscale)
+    User->>NPM: Connects directly over LAN
+    NPM->>NPM: Terminates SSL, matches hostname rule
+    NPM->>SVC: Proxies to internal docker-net name or LAN IP
+    SVC-->>User: Response
+```
+
+Off-network devices (phone on mobile data, laptop at a coffee shop) still resolve through Cloudflare to the Tailscale IP exactly as before—this is a local shortcut, not a replacement for the Tailscale path.
+
+**Setup on the UCG Max:**
+
+| Step | Where |
+|---|---|
+| Create wildcard record | *Settings > Policy Table > Create New Policy > DNS* (Network 9.4) or *Settings > Policy Engine > DNS* (Network 9.3) |
+| Type | Host (A) |
+| Domain Name | `*.domain.com` |
+| IP Address | NPM's LAN IP |
+| Confirm DNS server | *Settings > Networks > [LAN] > DNS Server*—clients must actually be using the UCG Max as their resolver |
+
+><div style="font-size:12px; line-height:1.3;">This doesn't break anything on the NPM side: it matches on the Host header/SNI, not on which IP the request arrived from, so routing rules and the Let's Encrypt wildcard cert behave identically regardless of path. One thing to check: if UniFi Content/Domain Filtering is enabled, it can reroute DNS traffic in a way that bypasses local records unless configured for local resolution support.</div>
 
 ### MagicDNS—how Tailscale names nodes
 
@@ -547,7 +581,7 @@ The "uncomfortable" experience of having hundreds of probes in less than 5 minut
 Trying to set up a reverse proxy to initially mitigate the attack surface (before tailscale) was difficult, especially since I started with Caddy which is good but not as easy, I later moved to NPM which made it much easier and I kept it after I moved to the Tailscale solution since it still provided me with the use of my own domain. 
 
 ### What I would do differently with more time
-My initial setup of Tailscale was a basic one, and although at the time it was what I needed to deploy fast and without a fuss. I wish I had spent a little more time understanding all the options I had with it and designing my network flows better. There are things that may not be needed or could be simplified, and others that I could implement to work better (local UniFi DNS alignment, Tailscale Auth Keys for my scripts, adding ssh direct for hosts, more restricted ACLs)
+My initial setup of Tailscale was a basic one, and although at the time it was what I needed to deploy fast and without a fuss. I wish I had spent a little more time understanding all the options I had with it and designing my network flows better. There are things that may not be needed or could be simplified, and others that I could implement to work better (Tailscale Auth Keys for my scripts, adding ssh direct for hosts, more restricted ACLs). Local UniFi DNS alignment was on this list too—it's since been implemented, see [Local DNS—Split-Horizon Resolution](#local-dnssplit-horizon-resolution).
 
 The subnet route I have enabled is not a clean way to access the LXCs where I have not installed Tailscale directly, but it was a quick way to access any LXC in a specific range of IP. It also required me to establish specific routes for when I'm local so the connection goes through my local gateway instead of going through Tailscale.
 
